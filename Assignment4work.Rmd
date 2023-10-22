@@ -1,0 +1,479 @@
+---
+title: "Smoothing splines and modelling: tricep skin thickness and cancer mortality case studies"
+author: "Cimmaron Yeoman"
+date: "2023-03-17"
+output:
+  pdf_document: default
+  word_document: default
+header-includes: 
+- \usepackage{geometry} \geometry{top=0.75in,left=1in,bottom=1in,right=1in}
+- \usepackage{sectsty}
+- \allsectionsfont{\color{blue}}
+html_document: default
+---
+
+## Part 1: Smoothing and Triceps Data
+
+The first section of this report evaluated the tricep skinfold thickness of 892 Gambian women in three West African villages, over 50 years. The *triceps brachii* is a muscle situated on the back of the the arm, and includes a lateral, long, and medial head (see Figure 1). The data set includes the tricep skinfold thickness measurements of the Gambian women, the log of the tricep skinfold thickness measurements, and the age of the women. The tricep skinfold thickness was predicted as a function of age, using a smoothing model.
+
+**Figure 1**
+
+*Triceps brachii anterior and posterior view*
+```{r, out.width= "150px", out.height= "200px", echo = FALSE}
+library(knitr)
+library(Matrix)
+knitr::include_graphics(c("Triceps_ant.png", "Triceps_post.png"))
+```
+
+*Note.* This figure highlights the heads of the *triceps brachii* on the human body. 
+The long head was highlighted in red, the lateral head in yellow, and the medial head in green. 
+These images provide an anterior and posterior view of the *triceps brachii* muscles on the 
+human skeleton. 
+
+```{r, echo = FALSE, results = 'hide', message = FALSE, warning = FALSE}
+library(readr)
+triceps_ds <- read_csv("triceps.csv")
+```
+
+## *Triceps brachii* data
+
+### Data set and missing observations
+
+The triceps data set (**triceps2**) was evaluated for any missing variables. There were no 
+missing observations and all cases were complete. The data set was renamed to **triceps2**.
+This will be the working data set for Part 1 of this report.
+
+```{r}
+triceps2 <- triceps_ds
+triceps2 <- triceps2[complete.cases(triceps2), ] 
+```
+ 
+## Visualizing the data set: scatter plots
+
+**Figure 2**
+\vspace*{-15mm}
+```{r, echo = FALSE, out.width = "75%", out.height= "75%"}
+plot(triceps2$age, triceps2$triceps, xlab = "Age in years",
+     ylab = "Triceps skinfold thickness", col = "gray20", cex = 0.7)
+abline(lm(triceps2$triceps ~ triceps2$age), col = "red", lwd = 2)
+```
+
+**Figure 3**
+\vspace*{-15mm}
+```{r, echo = FALSE, out.width = "75%", out.height= "75%"}
+plot(triceps2$age, triceps2$lntriceps, xlab = "Age in years",
+     ylab = "ln of triceps skinfold thickness", col = "gray20", cex = 0.7)
+abline(lm(triceps2$lntriceps ~ triceps2$age), col = "orange", lwd = 2)
+```
+
+Both the **triceps** and **lntriceps** (log of tricep skinfold thickness) did not fit a
+simple linear regression well. When plotted with **age** on the x-axis, both variables
+showed distinct curves and a non-linear pattern. 
+
+## Smoothing spline models: tricep skin thickness and age
+
+A model was made using the smooth.spline function for both the tricep skinfold thickness and
+the log of tricep skinfold thickness. Cross-validation was used to determine the equivalent 
+degrees of freedom. 
+
+```{r, warning = FALSE, results = 'hide'}
+library(splines)
+mod_ss <- smooth.spline(triceps2$age, triceps2$triceps, cv = TRUE)
+mod_ss_ln <- smooth.spline(triceps2$age, triceps2$lntriceps, cv = TRUE)
+```
+
+```{r, include = FALSE}
+mod_ss
+mod_ss_ln
+```
+
+## Smooth spline plots: tricep skin thickness or log of tricep thickness and age
+
+**Figure 4**
+\vspace*{-15mm}
+```{r, echo = FALSE, out.width = "75%", out.height= "75%"}
+plot(triceps2$age, triceps2$triceps, xlab = "Age in years", 
+     ylab = "Tricep skinfold thickness", col = "gray20", cex = 0.7)
+lines(mod_ss, col = "red", lwd = 2)
+legend("topleft", legend = c("7.9 DF"), col = "red", 
+       lty = 1, lwd = 2 , cex = 0.8)
+```
+
+**Figure 5**
+\vspace*{-15mm}
+```{r, echo = FALSE, out.width="75%", out.height = "75%"}
+plot(triceps2$age, triceps2$lntriceps, xlab = "Age in years", 
+     ylab = "ln of tricep skinfold thickness", col = "gray20", cex = 0.7)
+lines(mod_ss_ln, col = "orange", lwd = 2)
+legend("topleft", legend = c("10.6 DF"), col = "orange", 
+       lty = 1, lwd = 2 , cex = 0.8)
+```
+
+Using the smooth.spline function with cross-validation included, the smoothing parameter for the
+**triceps** ~ **age** model had an equivalent degrees of freedom of **7.9**, and the **lntriceps** ~ **age** 
+model had an equivalent degrees of freedom of **10.6**. Lambda was about **0.005** for the first model and 
+**0.001** for the second model; the curve for the first model was slightly smoother. Neither of the
+smoothing splines appeared to over or underfit the data. 
+
+## Smooth splines with different *df* (log of tricep skin thickness)
+
+**Figure 6**
+\vspace*{-15mm}
+```{r echo=FALSE, warning=FALSE, out.width = "75%", out.height= "75%"}
+mod_ss_ln <- smooth.spline(triceps2$age, triceps2$lntriceps, cv = TRUE)
+mod_ln2 <- smooth.spline(triceps2$age, triceps2$lntriceps, df = 14)
+mod_ln3 <- smooth.spline(triceps2$age, triceps2$lntriceps, df = 40)
+plot(triceps2$age, triceps2$lntriceps, xlab = "Age in years", 
+     ylab = "ln of tricep skin thickness", col = "gray20", cex = 0.7)
+lines(mod_ss_ln, col = "orangered2", lwd = 2)
+lines(mod_ln2, col = "steelblue", lwd = 2)
+lines(mod_ln3, col = "olivedrab", lwd = 2)
+legend("topleft", legend = c("10.6 DF", "14 DF", "40 DF"), col = c("orangered2", 
+      "steelblue", "olivedrab"),lty = 1 , lwd = 2 , cex = 0.8)
+```
+
+Using the same smooth.spline function, different degrees of freedom were tested with the **lntriceps** ~ **age** 
+model. As the degrees of freedom increased, the smoothing spline became more bumpy and the lambda values 
+decreased to much smaller values. The Figure 6 *df* = **14** smoothing spline looked visually similar to 
+the *df* = **10.6** smoothing spline in Figure 5. The *df* = **40** smoothing spline of Figure 6 was very 
+rough and clearly overfitting the data. 
+
+```{r, include = FALSE }
+mod_ln2
+mod_ln3
+```
+
+## Smoothing splines with different *df* (tricep skin thickness)
+
+**Figure 7**
+\vspace*{-15mm}
+```{r, warning = FALSE, echo = FALSE, out.width = "75%", out.height = "75%"}
+library(splines)
+mod_ss <- smooth.spline(triceps2$age, triceps2$triceps, cv = TRUE)
+mod_2 <- smooth.spline(triceps2$age, triceps2$triceps, df = 5)
+plot(triceps2$age, triceps2$triceps, xlab = "Age in years", 
+     ylab = "Tricep skin thickness", col = "gray20", cex = 0.7)
+lines(mod_ss, col = "red", lwd = 2)
+lines(mod_2, col = "mediumblue", lwd = 2)
+legend("topleft", legend = c("7.9 DF", "5 DF"), col = c("red", "mediumblue"), 
+       lty = 1 , lwd = 2 , cex = 0.8)
+```
+
+**Figure 8**
+\vspace*{-15mm}
+```{r, warning = FALSE, echo = FALSE, out.width = "75%", out.height = "75%" }
+mod_3 <- smooth.spline(triceps2$age, triceps2$triceps, df = 40)
+mod_4 <- smooth.spline(triceps2$age, triceps2$triceps, df = 18)
+plot(triceps2$age, triceps2$triceps, xlab = "Age in years", 
+     ylab = "Tricep skin thickness", col = "gray20", cex = 0.7)
+lines(mod_3, col = "seagreen4", lwd = 2)
+lines(mod_4, col = "mediumpurple4", lwd = 2)
+legend("topleft", legend = c("40 DF", "18 DF"), col = c ("seagreen4", 
+     "mediumpurple4"), lty = 1 , lwd = 2 , cex = 0.8)
+```
+
+Similar to the plots with **lntriceps**, the higher the *df*, the rougher the smoothing splines
+for **triceps** ~ **age** model appeared, with both splines in Figure 8 overfitting the data. In 
+Figure 7, the blue *df* = 5 smoothing splines appeared to slightly underfit the data while the 
+*df* = 7.9 smoothing spline had a better fit. 
+
+## Conclusion
+
+The smoothing splines selected that fit the **triceps** ~ **age** or **lntriceps** ~ **age**
+models showed the practicality of fitting splines to data sets, and the potential for their 
+use in predictive models. Very high **df** smoothing splines seem to overfit data sets in most
+cases, even when they have clear s-shaped curves and bends. 
+
+## Part 2: Cancer data set and lasso regression
+
+Cancer is one of the leading causes of death in the United States and across the globe. The disease
+exists in various forms, and millions of people, both young and old, receive a cancer diagnosis
+each year. This report contains a United States focused data set, consisting of health and socioeconomic
+factors from 3047 counties. The response variable or variable of interest was **TARGET_deathRate**, 
+the mean per capita (100,000) cancer mortalities. 
+
+The goal of this analysis was to identify relevant predictor variables that could be
+candidates for a smooth relationship. A model with smoothing was compared to a basic
+model. Both natural cubic splines and the smoothing.spline package were used. Variable selection 
+was performed using the lasso regression method. 
+
+```{r, include = FALSE}
+library(glmnet)
+library(readr)
+```
+
+```{r}
+cancer_L <- read_csv("C:/Users/cimmy/Documents/2023WI-3561H/Assignment4/cancer_reg.csv", 
+    col_types = cols(Geography = col_skip()))
+cancer_L$binnedInc <- as.factor(cancer_L$binnedInc)
+```
+
+The data set was imported with the **Geography** or county name variable removed and the 
+**binnedInc** or binned income variable included as a factor. 
+
+## Removing outliers
+
+```{r, include = FALSE}
+summary(cancer_L)
+```
+
+The **MedianAge** variable had extreme values in the hundreds; to avoid some level of error in
+the data analysis, any values over 100 were removed. A median age of 100 would still be considered
+extreme and reviewing variable observations in future research is advised. 
+
+```{r}
+cancer_L$MedianAge[cancer_L$MedianAge > 100] <- NA 
+```
+
+**Figure 9**
+\vspace*{-15mm}
+```{r, echo = FALSE, out.width = "75%", out.height="75%"}
+hist(cancer_L$MedianAge, main = NULL, xlab = "Median age", col = "gray24") 
+```
+
+*Note*. This histogram shows the corrected distribution of **MedianAge** values after outlier values 
+were removed.
+
+### Working data set
+
+The final step before performing lasso regression was evaluation for missing observations. 
+There were no missing observations detected, all cases were complete. The data set was renamed 
+to **can_L**. This will be the working data set for Part 2 of this report. 
+
+```{r}
+can_L <- cancer_L[complete.cases(cancer_L), ]
+```
+
+## Lasso regression 
+
+A test and train set were created from the **can_L** data set.
+
+```{r}
+set.seed(56)
+trainC <- sample(x = 1:584, size = 292, replace = FALSE)
+testC <- (-trainC)
+x <- model.matrix ( TARGET_deathRate ~ ., data = can_L) [, -1]
+y <- can_L$TARGET_deathRate
+```
+
+### Testing a simple linear regression model
+
+```{r, results = 'hide'}
+modC1 <- lm(TARGET_deathRate ~ ., data = can_L, subset = trainC)
+summary(modC1)
+modC1 <- summary(modC1)$adj.r.squared * 100
+```
+A basic model using the **trainC** subset had an adjusted $R^2$ of `r round(modC1, 1)`% variation explained with 32 
+predictor variables included. A majority of the variables did not appear to have a significant relationship with the 
+response variable. Lasso regression will eliminate the less relevant variables before the smooth relationships are 
+explored. 
+
+### Creating a grid of lambdas
+
+**Figure 10**
+\vspace*{-5mm}
+```{r, warning=FALSE, echo = FALSE, out.width = "75%", out.height ="75%"}
+grid <- 10^seq(from = 6, to = -2, length.out = 100)
+modC_lasso <- glmnet(x, y, alpha = 1, lambda = grid)
+plot(modC_lasso)
+```
+
+As the lambda values on the x-axis increase, the larger penalty forces the coefficients of 
+the less relevant predictor to zero. This is the variable selection action of lasso, which will
+help identify the predictors variables for a model under a particular penalty value.  
+
+### Selecting lambda
+
+```{r, results = 'hide'}
+set.seed(76)
+cv_outL <- cv.glmnet(x[trainC, ],
+                    y[trainC],
+                    alpha = 1)
+lambda <- cv_outL$lambda.min
+lambda
+```
+
+The minimum lambda was **1.52** after rounding. 
+
+**Figure 11**
+\vspace*{-5mm}
+```{r, echo = FALSE, out.width = "75%", out.height = "75%"}
+plot(cv_outL)
+```
+
+The lambda fell between the the two dashed lines on the plot above: this is where the 
+MSE of prediction was minimized. 
+
+### Testing a model and calculating the MSE
+
+```{r, results = 'hide'}
+modC_lasso <- glmnet(x[trainC, ], y[trainC], alpha = 1,
+                    lambda = grid, thresh = 1e-10)
+best_predL <- predict(modC_lasso, s = lambda, newx = x[testC, ])
+mean((best_predL - y[testC])^2) #MSE calculation
+```
+When lambda was at **1.52** the MSE was **492.1**.
+
+### Eliminating variables
+
+```{r, echo = TRUE, results = 'hide'}
+modC_lasso$lambda  
+coefficients(modC_lasso)[, 73]
+```
+ 
+The 73rd term of **1.519** was the most similar to the minimum lambda value of **1.52**. Many of the
+variables were zeroed and therefore could be eliminated from the subset selected for modelling. 
+
+### Variable subset 
+
+```{r, results = 'hide'}
+which(abs(coefficients(modC_lasso)[, 73]) >= 1e-10)
+```
+The lasso regression identified 13 variables for the subset which could be used in modelling. 
+From this list, **PctBlack**, **PctPrivateCoverage**, and **medIncome** were selected for the
+smooths and models. 
+
+## Selecting variables to smooth
+
+A scatter plot matrix showed that many of the predictor variables had a significant positive or 
+negative linear relationship with the **TARGET_deathRate** response variable. Smoothing did not 
+appear to be necessary for many variables, and doing so would likely overfit the data. The variables 
+**PctBlack**, **PctPrivateCoverage**, and **medIncome** were selected, as the pattern they formed when
+plotted against the response variable showed slight bends or curves, potentially suitable for smoothing. 
+
+```{r, warning = FALSE, include = FALSE}
+canF <- can_L[, c("TARGET_deathRate", "PctBlack", "PctPrivateCoverage", "medIncome")]
+#extracted variables
+canF <- canF[complete.cases(canF), ] 
+```
+
+```{r, include = FALSE}
+library(splines)
+```
+
+```{r, warning = FALSE}
+A <- seq(from = 0, to = 85)
+x1 <- canF$PctBlack
+y1 <- canF$TARGET_deathRate
+mod_SSA <- smooth.spline(canF$PctBlack, canF$TARGET_deathRate, cv = TRUE)
+smooth1 <- glm(y1 ~ ns(x1, df = 5))
+```
+
+This code chunk provides an example of the formulas used to create the models and splines. For 
+each variable, a natural cubic spline and smoothing spline model was made.
+
+```{r, warning = FALSE, include = FALSE}
+B <- seq(from = 20, to = 90)
+x2 <- canF$PctPrivateCoverage
+y2 <- canF$TARGET_deathRate
+mod_SSB <- smooth.spline(canF$PctPrivateCoverage, canF$TARGET_deathRate, 
+                         cv = TRUE)
+smooth2 <- glm(y2 ~ ns(x2, df = 3))
+```
+
+```{r, warning = FALSE, include = FALSE}
+C <- seq(from = 23000, to = 97279)
+x3 <- canF$medIncome
+y3 <- canF$TARGET_deathRate
+mod_SSC <- smooth.spline(canF$medIncome, canF$TARGET_deathRate, cv = TRUE)
+smooth3 <- glm(y3 ~ ns(x3, df = 5))
+```
+
+## Plotted natural cubic splines and smoothing splines
+
+**Figure 12**
+\vspace*{-15mm}
+```{r, echo = FALSE, out.width = "75%", out.width="75%"}
+plot(canF$PctBlack, canF$TARGET_deathRate, col = "gray20", cex = 0.7,
+     xlab = "% of Black population", ylab = "Mean cancer deaths (per capita)", 
+     ylim = c(0,350))
+lines(A, predict(smooth1, newdata = data.frame(x1=A)), col = "red", lwd=2)
+lines(mod_SSA, col = "blue", lwd = 2)
+legend("top", legend = c("DF = 5", "DF = 5.1"), col = c("red", col = "blue"), 
+       lty = 1, lwd = 2 , cex = 0.8)
+```
+
+Figure 12 visually had a lot of scatter and a curved, s-shaped pattern that continued along
+the x-axis. A majority of the data was grouped between 0-10% on the x-axis.
+Fitting a spline with a higher degrees of freedom or specified knots along the s-curve would 
+look more aesthetically pleasing, but this would overfit the data. The s-shaped data points 
+did not appear dense enough to justify a rough smoothing spline. The grouping of the data was
+somewhat unusual; perhaps there were some missing observations for the **PctBlack** variable in 
+this data set. 
+
+**Figure 13**
+\vspace*{-15mm}
+```{r, echo = FALSE, out.width = "75%", out.width="75%"}
+plot(canF$PctPrivateCoverage, canF$TARGET_deathRate, col = "gray20", cex = 0.7,
+     xlab = "% of population with private health insurance", 
+     ylab = "Mean cancer deaths (per capita)", ylim = c(0, 350))
+lines(B, predict(smooth2, newdata = data.frame(x2=B)), col = "red", lwd=2)
+lines(mod_SSB, col = "blue", lwd = 2)
+legend("topright", legend = c("DF = 3", "DF = 5.1"), col = c("red", "blue"), 
+       lty = 1, lwd = 2 , cex = 0.8)
+```
+
+Figure 13 appeared to have an l-shaped bend where the cancer deaths peaked when the x-value percentages 
+were between the 55-65% range. After this maximum point, the cancer deaths droped as more of the population 
+reported having private health insurance. The natural cubic spline selected a *df* of 3, and the smoothing spline 
+had a *df* of 5. Either of the degrees of freedom seemed suitable, neither under or overfitting the data. 
+
+**Figure 14**
+\vspace*{-15mm}
+```{r, echo = FALSE, out.width = "75%", out.width="75%"}
+plot(canF$medIncome, canF$TARGET_deathRate, col = "gray20", cex = 0.7,
+     xlab = "Median income", ylab = "Mean cancer deaths (per capita)",
+     ylim = c(0, 350))
+lines(C, predict(smooth3, newdata = data.frame(x3=C)), col = "red", lwd=2)
+lines(mod_SSC, col = "blue", lwd = 2)
+legend("topright", legend = c("DF = 5", "DF = 3.4"), col = c("red", "blue"),
+       lty = 1, lwd = 2 , cex = 0.8)
+```
+
+In the case of Figure 14, I found the lower degrees of freedom selected by the cross-validated
+smoothing spline underfit the data, considering the grouping of the data points in the bottom
+left corner of the scatter plot. The *df* = 5 natural cubic spline reflected the slight curved 
+shape of the data. 
+
+## With and without smoothing
+
+```{r}
+Nsmooth <- glm(TARGET_deathRate ~ PctBlack + PctPrivateCoverage + medIncome, data = canF)
+Ysmooth <- glm(TARGET_deathRate ~ ns(PctBlack, df = 5) + ns(PctPrivateCoverage, df = 3) 
+               + ns(medIncome, df = 5), data = canF)
+```
+
+The main differences between these models were the coefficient values and the standard error values.
+The model without smoothing had smaller coefficients (mostly under 0.5), with standard error values only 
+slightly higher. The model with smoothing had a greater range in coefficient values with some in the 
+positive and negative tens, and one in the low hundreds. The smoothing spline values were not too 
+ridiculous, but the predictor variables may be correlated - a scatter plot matrix of all the variables 
+showed that many predictors were correlated with each other. 
+
+## Conclusion
+
+The smoothing was unnecessary to some degree. If you were to compare the splines fitting the
+tricep skin thickness models in Part 1 of this report, you would see how much better the splines
+fit the data. Splines could place too much emphasis on outliers or fitting every single data point 
+if used improperly. This would result in a poor predictive model.
+
+```{r, echo = FALSE, include = FALSE}
+summary(Nsmooth)$coefficients
+```
+
+```{r, echo = FALSE, include = FALSE}
+summary(Ysmooth)$coefficients
+```
+
+```{r, include = FALSE}
+mod_SSA 
+summary(smooth1)
+mod_SSB
+summary(smooth2)
+mod_SSC
+summary(smooth3)
+```
+
+
+
+
